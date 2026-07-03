@@ -408,7 +408,7 @@ def build_prompt_sync(config: dict, args: argparse.Namespace) -> str:
 
 def main():
     parser = argparse.ArgumentParser(description="rickc-studio — Multi-Provider AI Music Generator")
-    parser.add_argument("--provider", "-p", required=True, help=f"Provider 名称 (可用: {list_providers()})")
+    parser.add_argument("--provider", "-p", default="", help=f"Provider 名称 (可用: {list_providers()})")
     parser.add_argument("--slug", "-s", default="", help="输出文件名前缀")
     parser.add_argument("--params", default="", help="覆写参数: bpm=120,key=D minor,duration=180")
     parser.add_argument("--prompt", default="", help="自然语言提示 (Suno 模式)")
@@ -421,6 +421,9 @@ def main():
     if args.list:
         print(f"可用 providers: {list_providers()}")
         return
+
+    if not args.provider:
+        parser.error("--provider/-p 是必需的 (或用 --list 查看可用 provider)")
 
     # 解析 --params
     params = {}
