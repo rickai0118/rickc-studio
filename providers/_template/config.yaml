@@ -1,0 +1,27 @@
+# Template: New Provider Config
+# 复制此目录，填好以下字段即可接入
+
+name: Provider Name           # 显示名
+model: model-id               # API 模型 ID
+endpoint: https://api.example.com/v1/generate
+
+# 认证方式
+auth:
+  type: bearer                # bearer | api-key-header | api-key-query
+  env_key: PROVIDER_API_KEY   # 环境变量名
+  # header_name: X-API-Key    # (仅 api-key-header 需要)
+
+# 默认参数
+defaults:
+  duration: 240
+  format: mp3
+  # 其他 provider 专属参数...
+
+# 提示结构
+prompt:
+  tags_required: false        # 是否使用 Tags + Lyrics 分离输入
+  lyrics_format: "纯文本"      # 歌词结构描述
+  max_perf_hints: null        # 演出指令上限
+
+# 已知限制（可选）
+limits: {}

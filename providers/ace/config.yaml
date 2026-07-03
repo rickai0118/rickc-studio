@@ -1,0 +1,32 @@
+# ACE-Step 1.5 Provider Config
+# 所有参数均可覆写，generate.py 通过 --params 传入
+
+name: ACE-Step 1.5
+model: ace-step-1.5
+endpoint: https://api.acemusic.ai/v1/chat/completions
+
+# 认证
+auth:
+  type: bearer
+  env_key: ACE_MUSIC_API_KEY
+
+# 默认参数
+defaults:
+  bpm: 115
+  key: "E minor"
+  duration: 240        # 秒，上限 300
+  format: mp3
+  thinking: true       # ACE 专属：启用思考模式
+
+# 提示结构 — ACE 使用 Tags + Lyrics 分离输入
+prompt:
+  tags_required: true
+  lyrics_format: "[Section] 标记结构 (Intro / Verse / Chorus / Bridge / Outro / End)"
+  max_perf_hints: 3    # 演出指令建议不超过 3 行
+
+# 已知限制
+limits:
+  max_genres_in_tags: 1        # 多流派导致声部分层
+  key_lock: true               # 不支持段落间转调
+  bpm_range: [60, 180]         # 实测安全范围
+  suno_dialect_incompatible: true  # [Energy] / *[...]* 等 Suno 专属标记会乱套

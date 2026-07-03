@@ -1,0 +1,25 @@
+# 密钥 & 凭据
+.env
+*.pem
+*.key
+*credentials*
+*token*
+
+# 生成的音频
+output/
+*.mp3
+*.wav
+*.flac
+*.ogg
+
+# 生成存档
+archive/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
