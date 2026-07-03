@@ -3,12 +3,18 @@
 
 name: ACE-Step 1.5
 model: ace-step-1.5
-endpoint: https://api.acemusic.ai/v1/chat/completions
+
+endpoint:
+  base: https://api.acemusic.ai
+  generate: /v1/chat/completions
 
 # 认证
 auth:
   type: bearer
   env_key: ACE_MUSIC_API_KEY
+
+task:
+  mode: sync
 
 # 默认参数
 defaults:
@@ -16,7 +22,7 @@ defaults:
   key: "E minor"
   duration: 240        # 秒，上限 300
   format: mp3
-  thinking: true       # ACE 专属：启用思考模式
+  thinking: disabled   # ACE 专属：思考模式
 
 # 提示结构 — ACE 使用 Tags + Lyrics 分离输入
 prompt:

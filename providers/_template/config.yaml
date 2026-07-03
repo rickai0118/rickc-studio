@@ -1,27 +1,41 @@
-# Template: New Provider Config
-# 复制此目录，填好以下字段即可接入
+# Provider 接入模板
+# 复制此目录，修改以下字段即可接入新模型
 
-name: Provider Name           # 显示名
-model: model-id               # API 模型 ID
-endpoint: https://api.example.com/v1/generate
+name: my-model                      # 显示名称
+model: my-model-id                  # 模型 ID
+provider: my-platform               # 平台标识
 
-# 认证方式
+endpoint:
+  base: https://api.example.com     # 基础 URL
+  # sync 模式:
+  generate: /v1/chat/completions    # 提交端点
+  # async 模式:
+  # submit: /v1/submit/music         # 提交端点
+  # fetch:  /v1/fetch/{task_id}      # 轮询端点
+
 auth:
-  type: bearer                # bearer | api-key-header | api-key-query
-  env_key: PROVIDER_API_KEY   # 环境变量名
-  # header_name: X-API-Key    # (仅 api-key-header 需要)
+  type: bearer                      # bearer | api-key-header | api-key-query
+  env_var: MYPROVIDER_API_KEY       # 环境变量名 (兼容 env_key)
 
-# 默认参数
+task:
+  mode: sync                        # sync | async
+
+# 默认参数 (可被 --params 覆写)
 defaults:
+  bpm: 120
+  key: "C major"
   duration: 240
   format: mp3
-  # 其他 provider 专属参数...
 
-# 提示结构
+# 提示结构 (sync 模式)
 prompt:
-  tags_required: false        # 是否使用 Tags + Lyrics 分离输入
-  lyrics_format: "纯文本"      # 歌词结构描述
-  max_perf_hints: null        # 演出指令上限
+  tags_required: false              # ACE 为 true
 
-# 已知限制（可选）
-limits: {}
+# async 模式参数
+params:
+  gpt_description_prompt:
+    type: string
+    required: true
+  make_instrumental:
+    type: bool
+    default: false

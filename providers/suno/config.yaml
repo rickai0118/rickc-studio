@@ -1,0 +1,62 @@
+# Suno Music (v4/v4.5) via comfly.org proxy
+# https://ai.comfly.org — 模型广场聚合平台
+
+name: suno
+display: Suno Music
+model: suno_music
+provider: comfly
+
+endpoint:
+  base: https://ai.comfly.org
+  submit: /suno/submit/music
+  fetch:  /suno/fetch/{task_id}
+  lyrics: /suno/submit/lyrics
+
+auth:
+  type: bearer
+  env_var: COMLFY_API_KEY
+  header: Authorization
+
+task:
+  mode: async                    # submit → poll → download (not streaming)
+  poll_interval_sec: 8
+  max_wait_sec: 300
+  songs_per_gen: 2               # Suno always returns 2 clips per generation
+
+# API payload for POST /suno/submit/music
+# Comfly accepts gpt_description_prompt (natural language)
+# Suno expands it into tags + lyrics internally
+params:
+  gpt_description_prompt:
+    type: string
+    required: true
+    description: 自然语言音乐描述，Suno 内部展开为 tags + lyrics
+    max_chars: 3000
+  make_instrumental:
+    type: bool
+    default: false
+    description: 是否纯器乐
+  model:
+    type: string
+    default: suno_music
+    read_only: true
+
+limits:
+  price_per_call: 0.5            # B0.5/次 (平台定价)
+
+# Response schema from GET /suno/fetch/{task_id}
+# {
+#   "code": "success",
+#   "data": {
+#     "status": "SUCCESS",
+#     "data": [{
+#       "id": "...",
+#       "title": "...",
+#       "tags": "...",
+#       "audio_url": "https://cdn1.suno.ai/xxx.mp3",
+#       "image_url": "https://cdn2.suno.ai/xxx.jpeg",
+#       "duration": 136.76,
+#       "metadata": {...}
+#     }]
+#   }
+# }
