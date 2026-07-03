@@ -296,6 +296,11 @@ def generate_minimax(config: dict, args: argparse.Namespace):
     print(f"✅ Generated!")
     print(f"   Duration: {duration_ms / 1000:.1f}s | {sample_rate}Hz | {channels}ch | {bitrate // 1000}kbps")
 
+    # URL 格式: audio 字段直接是 URL 字符串
+    if audio_hex.startswith("http"):
+        audio_url = audio_hex
+        audio_hex = ""
+
     # 保存
     fname = OUTPUT_DIR / f"{slug}.{fmt}"
 
