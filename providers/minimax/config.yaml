@@ -1,0 +1,100 @@
+# MiniMax Music Generation (music-2.6 / music-2.6-free)
+# https://platform.minimaxi.com — 官方开放平台
+#
+# Token Plan 订阅: Plus ¥49/月 | Max ¥119/月 | Ultra ¥469/月
+# music-2.6-free: 免费, API Key 即用, RPM=3
+# music-2.6:      ¥1.00/首 (当前限免), Token Plan 用户, RPM 高
+
+name: minimax
+display: MiniMax Music
+model: music-2.6-free                # 免费模型, 改为 music-2.6 需 Token Plan
+provider: minimax
+
+endpoint:
+  base: https://api.minimaxi.com
+  generate: /v1/music_generation
+
+auth:
+  type: bearer
+  env_var: MINIMAX_API_KEY
+  header: Authorization
+
+task:
+  mode: minimax                      # 专属模式: 同步返回 hex/url, 无需轮询
+
+# API 请求参数映射
+params:
+  prompt:
+    type: string
+    required: false                  # 纯音乐时必填, 有歌词时可选
+    max_chars: 2000
+    description: 逗号分隔风格标签, 如 "独立民谣, 忧郁, 内省"
+  lyrics:
+    type: string
+    required: false
+    max_chars: 3500
+    description: 歌词, \n 分隔, 支持结构标签 [Verse]/[Chorus] 等
+  is_instrumental:
+    type: bool
+    default: false
+    description: 是否纯音乐
+  lyrics_optimizer:
+    type: bool
+    default: false
+    description: 根据 prompt 自动生成歌词
+  output_format:
+    type: string
+    default: url                     # url (24h有效) | hex
+    description: 返回格式
+  aigc_watermark:
+    type: bool
+    default: false
+    description: 末尾加水印
+
+audio_setting:
+  sample_rate: 44100
+  bitrate: 256000
+  format: mp3
+  channel: 2
+
+# 歌词结构标签 (reserved)
+lyrics_tags:
+  - Intro
+  - Verse
+  - Pre Chorus
+  - Chorus
+  - Interlude
+  - Bridge
+  - Outro
+  - Post Chorus
+  - Transition
+  - Break
+  - Hook
+  - Build Up
+  - Inst
+  - Solo
+
+limits:
+  rpm: 3                             # free 模型限制
+  price_per_call: 1.00               # ¥1.00/首 (限免中)
+  price_lyrics_gen: 0.05             # ¥0.05/次 (限免中)
+
+# Response schema:
+# {
+#   "data": {
+#     "audio": "hex...",             # output_format=hex 时
+#     "audio_url": "https://...",    # output_format=url 时 (24h 有效)
+#     "status": 2
+#   },
+#   "extra_info": {
+#     "music_duration": 25364,       # 毫秒
+#     "music_sample_rate": 44100,
+#     "music_channel": 2,
+#     "bitrate": 256000,
+#     "music_size": 813651           # 字节
+#   },
+#   "base_resp": {
+#     "status_code": 0,
+#     "status_msg": "success"
+#   }
+# }

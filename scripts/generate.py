@@ -190,6 +190,164 @@ def generate_sync(config: dict, prompt: str, args: argparse.Namespace):
 
 
 # ──────────────────────────────────────────────────────────
+#  MiniMax 模式: 同步返回 hex 或 URL, 无需轮询
+# ──────────────────────────────────────────────────────────
+
+def generate_minimax(config: dict, args: argparse.Namespace):
+    """MiniMax 音乐生成 (同步: 提交 → 直接返回 hex/url)"""
+    name = config["name"]
+    model = config.get("model", "music-2.6-free")
+    audio_setting = config.get("audio_setting", {})
+
+    # 拼装请求体
+    body = {"model": model}
+
+    # prompt: 纯音乐时必填, 有歌词时可选
+    prompt = args.prompt or args.params.get("prompt", "")
+    body["prompt"] = prompt
+
+    # lyrics
+    lyrics = args.lyrics or args.params.get("lyrics", "")
+    if lyrics:
+        body["lyrics"] = lyrics
+
+    # is_instrumental
+    is_instrumental = args.params.get("is_instrumental", "false").lower() in ("true", "1", "yes")
+    if is_instrumental:
+        body["is_instrumental"] = True
+
+    # lyrics_optimizer
+    lyrics_optimizer = args.params.get("lyrics_optimizer", "false").lower() in ("true", "1", "yes")
+    if lyrics_optimizer:
+        body["lyrics_optimizer"] = True
+
+    # output_format
+    output_fmt = args.params.get("output_format", "url")
+    body["output_format"] = output_fmt
+
+    # aigc_watermark
+    aigc_watermark = args.params.get("aigc_watermark", "false").lower() in ("true", "1", "yes")
+    if aigc_watermark:
+        body["aigc_watermark"] = True
+
+    # audio_setting
+    body["audio_setting"] = {
+        "sample_rate": int(args.params.get("sample_rate", audio_setting.get("sample_rate", 44100))),
+        "bitrate": int(args.params.get("bitrate", audio_setting.get("bitrate", 256000))),
+        "format": args.params.get("format", audio_setting.get("format", "mp3")),
+        "channel": int(args.params.get("channel", audio_setting.get("channel", 2))),
+    }
+
+    api_key = get_api_key(config)
+    headers = build_headers(config, api_key)
+    url = build_endpoint_url(config, "generate")
+
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    slug = args.slug or f"minimax_{timestamp}"
+
+    print(f"🎵 {name} (minimax / {model})")
+    if prompt:
+        print(f"   Prompt: \"{prompt[:120]}{'…' if len(prompt) > 120 else ''}\"")
+    if lyrics:
+        print(f"   Lyrics: {len(lyrics)} chars")
+    print(f"   Instrumental: {is_instrumental}")
+    print(f"   Output format: {output_fmt}")
+    print(f"   Generating...")
+
+    result = subprocess.run(
+        ["curl", "-s", "-X", "POST", url,
+         "-H", f"Authorization: Bearer {api_key}",
+         "-H", "Content-Type: application/json",
+         "-d", json.dumps(body, ensure_ascii=False)],
+        capture_output=True, text=True, timeout=120,
+    )
+
+    if result.returncode != 0:
+        print(f"❌ curl error: {result.stderr}")
+        sys.exit(1)
+
+    d = json.loads(result.stdout)
+
+    # 检查返回
+    base_resp = d.get("base_resp", {})
+    if base_resp.get("status_code", -1) != 0:
+        err_msg = base_resp.get("status_msg", "unknown error")
+        print(f"❌ API error ({base_resp.get('status_code')}): {err_msg}")
+        print(f"   Full: {json.dumps(d, ensure_ascii=False)[:500]}")
+        sys.exit(1)
+
+    data = d.get("data", {})
+    extra = d.get("extra_info", {})
+
+    audio_hex = data.get("audio", "")
+    audio_url = data.get("audio_url", "")
+
+    if not audio_hex and not audio_url:
+        print(f"❌ No audio in response: {json.dumps(d, ensure_ascii=False)[:500]}")
+        sys.exit(1)
+
+    duration_ms = extra.get("music_duration", 0)
+    sample_rate = extra.get("music_sample_rate", 0)
+    channels = extra.get("music_channel", 0)
+    bitrate = extra.get("bitrate", 0)
+    music_size = extra.get("music_size", 0)
+    fmt = body["audio_setting"]["format"]
+
+    print(f"✅ Generated!")
+    print(f"   Duration: {duration_ms / 1000:.1f}s | {sample_rate}Hz | {channels}ch | {bitrate // 1000}kbps")
+
+    # 保存
+    fname = OUTPUT_DIR / f"{slug}.{fmt}"
+
+    if audio_hex:
+        # hex 格式直接解码
+        audio_bytes = bytes.fromhex(audio_hex)
+        with open(fname, "wb") as f:
+            f.write(audio_bytes)
+    elif audio_url:
+        # URL 格式下载
+        print(f"   Downloading {audio_url}...")
+        try:
+            urllib.request.urlretrieve(audio_url, str(fname))
+        except Exception as e:
+            print(f"   ❌ Download failed: {e}")
+            sys.exit(1)
+
+    size_kb = os.path.getsize(fname) / 1024
+    print(f"   → {fname} ({size_kb:.0f} KB)")
+
+    # 存档
+    existing = len([f for f in os.listdir(ARCHIVE_DIR) if f.endswith(".json") and f != "MANIFEST.json"])
+    version = existing + 1
+    archive_fname = f"{slug}-v{version:03d}-{timestamp}.json"
+
+    archive_record = {
+        "provider": args.provider,
+        "model": model,
+        "version": version,
+        "timestamp": timestamp,
+        "prompt": prompt[:500],
+        "lyrics": lyrics[:500] if lyrics else "",
+        "is_instrumental": is_instrumental,
+        "duration_ms": duration_ms,
+        "sample_rate": sample_rate,
+        "channels": channels,
+        "bitrate": bitrate,
+        "music_size": music_size,
+        "output_format": output_fmt,
+        "output_file": str(fname),
+    }
+
+    archive_path = ARCHIVE_DIR / archive_fname
+    with open(archive_path, "w", encoding="utf-8") as f:
+        json.dump(archive_record, f, ensure_ascii=False, indent=2)
+
+    update_manifest()
+    print(f"\n📁 Archive: {archive_path}")
+    print(f"📊 MANIFEST updated (v{version})")
+
+
+# ──────────────────────────────────────────────────────────
 #  Async 模式: Suno via comfly (submit → poll → download)
 # ──────────────────────────────────────────────────────────
 
@@ -450,6 +608,8 @@ def main():
 
     if task_mode == "async":
         generate_async(config, args)
+    elif task_mode == "minimax":
+        generate_minimax(config, args)
     else:
         prompt = build_prompt_sync(config, args)
         generate_sync(config, prompt, args)
